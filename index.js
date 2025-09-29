@@ -370,7 +370,7 @@ function createToolbarButton() {
         id="preview-mode-toggle"
         class="button"
         data-on-click="togglePreviewMode"
-        title="切换预览模式 (Ctrl+Shift+P)"
+        title="切换预览模式"
       >
         <i class="ti">✏️</i>
         <span class="button-text">预览</span>
@@ -433,6 +433,10 @@ function updateToolbarButton(isPreviewMode, retryCount = 0) {
   const text = button.querySelector('.button-text');
 
   if (isPreviewMode) {
+    button.className = 'button preview-mode-active';
+    icon.textContent = '🔒';
+    text.textContent = '编辑';
+    button.title = '切换到编辑模式';
     // 移除所有状态类，添加预览模式类
     button.classList.remove('edit-mode-active');
     button.classList.add('preview-mode-active');
@@ -463,6 +467,7 @@ function updateToolbarButton(isPreviewMode, retryCount = 0) {
  */
 function setupSettingsListener() {
   logseq.onSettingsChanged((newSettings) => {
+    // 处理预览模式设置变化
     const newMode = newSettings?.previewMode || false;
 
     // 只在模式实际改变时更新
@@ -470,22 +475,6 @@ function setupSettingsListener() {
       previewModeActive = newMode;
       applyPreviewMode(newMode);
       updateToolbarButton(newMode);
-    }
-  });
-}
-
-/**
- * 设置键盘快捷键
- */
-function setupKeyboardShortcuts() {
-  document.addEventListener('keydown', (event) => {
-    // Ctrl/Cmd + Shift + P 切换预览模式
-    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'P') {
-      event.preventDefault();
-      event.stopPropagation();
-
-      const model = createPluginModel();
-      model.togglePreviewMode();
     }
   });
 }
@@ -507,9 +496,6 @@ async function main() {
     // 设置设置监听
     setupSettingsListener();
 
-    // 设置键盘快捷键
-    setupKeyboardShortcuts();
-
     // 初始化状态
     previewModeActive = logseq.settings?.previewMode || false;
 
@@ -522,7 +508,7 @@ async function main() {
 
     // 显示欢迎消息
     if (!logseq.settings?.welcomeMessageShown) {
-      logseq.App.showMsg('🎉 预览模式插件已加载！使用 Ctrl+Shift+P 快速切换');
+      logseq.App.showMsg('🎉 预览模式插件已加载！点击工具栏按钮切换模式');
       logseq.updateSettings({ welcomeMessageShown: true });
     }
 
