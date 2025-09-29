@@ -480,6 +480,26 @@ function setupSettingsListener() {
 }
 
 /**
+ * 注册键盘快捷键
+ */
+function registerKeyboardShortcut() {
+  logseq.App.registerCommandShortcut(
+    {
+      binding: 'ctrl+alt+o',
+      mac: 'cmd+alt+o',
+      mode: 'global'
+    },
+    async () => {
+      console.log('⌨️ Preview mode shortcut triggered');
+      const model = createPluginModel();
+      await model.togglePreviewMode();
+    }
+  );
+
+  console.log('⌨️ Keyboard shortcut registered: Ctrl+Alt+O (Cmd+Alt+O on Mac)');
+}
+
+/**
  * 主函数
  */
 async function main() {
@@ -496,6 +516,9 @@ async function main() {
     // 设置设置监听
     setupSettingsListener();
 
+    // 注册键盘快捷键
+    registerKeyboardShortcut();
+
     // 初始化状态
     previewModeActive = logseq.settings?.previewMode || false;
 
@@ -508,7 +531,7 @@ async function main() {
 
     // 显示欢迎消息
     if (!logseq.settings?.welcomeMessageShown) {
-      logseq.App.showMsg('🎉 预览模式插件已加载！点击工具栏按钮切换模式');
+      logseq.App.showMsg('🎉 预览模式插件已加载！点击工具栏按钮或使用 Ctrl+Alt+O 切换模式');
       logseq.updateSettings({ welcomeMessageShown: true });
     }
 
