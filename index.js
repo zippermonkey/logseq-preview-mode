@@ -15,6 +15,7 @@ import "@logseq/libs"
 // 全局状态管理
 let previewModeActive = false;
 let eventListenersAttached = false;
+let currentShortcut = 'ctrl+alt+o';
 
 /**
  * 创建插件交互模型
@@ -43,9 +44,9 @@ function createPluginModel() {
       updateToolbarButton(newMode);
 
       // 显示用户反馈
-      logseq.App.showMsg(
-        newMode ? '🔒 已进入预览模式' : '✏️ 已退出预览模式'
-      );
+      // logseq.App.showMsg(
+      //   newMode ? '🔒 已进入预览模式' : '✏️ 已退出预览模式'
+      // );
 
       console.log('✅ Preview mode toggle completed:', { previewModeActive, settings: logseq.settings?.previewMode });
       return newMode;
@@ -169,27 +170,27 @@ function injectPreviewModeStyles() {
         pointer-events: none !important;
       }
 
-      /* 预览模式水印提示 */
-      .blocks-container {
-        position: relative;
-      }
+      // /* 预览模式水印提示 */
+      // .blocks-container {
+      //   position: relative;
+      // }
 
-      .blocks-container::after {
-        content: "🔒 预览模式";
-        position: fixed;
-        top: 60px;
-        right: 20px;
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 500;
-        z-index: 9999;
-        pointer-events: none;
-        opacity: 0.8;
-        backdrop-filter: blur(4px);
-      }
+      // .blocks-container::after {
+      //   content: "🔒 预览模式";
+      //   position: fixed;
+      //   top: 60px;
+      //   right: 20px;
+      //   background: rgba(0, 0, 0, 0.8);
+      //   color: white;
+      //   padding: 6px 12px;
+      //   border-radius: 6px;
+      //   font-size: 12px;
+      //   font-weight: 500;
+      //   z-index: 9999;
+      //   pointer-events: none;
+      //   opacity: 0.8;
+      //   backdrop-filter: blur(4px);
+      // }
 
       /* 保持文本可选择 */
       .block-content * {
@@ -463,6 +464,21 @@ function updateToolbarButton(isPreviewMode, retryCount = 0) {
 }
 
 /**
+ * 设置设置界面
+ */
+function setupSettingsSchema() {
+  logseq.useSettingsSchema([
+    {
+      key: 'shortcutBinding',
+      type: 'string',
+      title: '快捷键',
+      description: '设置切换预览模式的键盘快捷键 (例如: ctrl+alt+o, ctrl+shift+p)',
+      default: 'ctrl+alt+o',
+    }
+  ]);
+}
+
+/**
  * 设置设置模式监听
  */
 function setupSettingsListener() {
@@ -476,6 +492,14 @@ function setupSettingsListener() {
       applyPreviewMode(newMode);
       updateToolbarButton(newMode);
     }
+
+    // 处理快捷键设置变化
+    const newShortcut = newSettings?.shortcutBinding || 'ctrl+alt+o';
+    if (newShortcut !== currentShortcut) {
+      console.log('⌨️ Shortcut changed, re-registering:', newShortcut);
+      currentShortcut = newShortcut;
+      registerKeyboardShortcut();
+    }
   });
 }
 
@@ -483,20 +507,29 @@ function setupSettingsListener() {
  * 注册键盘快捷键
  */
 function registerKeyboardShortcut() {
+  // 从设置中获取用户自定义的快捷键
+  const shortcutBinding = logseq.settings?.shortcutBinding || currentShortcut;
+
+  // 为 Mac 自动转换 ctrl 为 cmd
+  const macBinding = shortcutBinding.replace(/ctrl/g, 'cmd');
+
   logseq.App.registerCommandShortcut(
     {
-      binding: 'ctrl+alt+o',
-      mac: 'cmd+alt+o',
+      binding: shortcutBinding,
+      mac: macBinding,
       mode: 'global'
     },
     async () => {
-      console.log('⌨️ Preview mode shortcut triggered');
+      console.log('⌨️ Preview mode shortcut triggered with:', shortcutBinding);
       const model = createPluginModel();
       await model.togglePreviewMode();
     }
   );
 
-  console.log('⌨️ Keyboard shortcut registered: Ctrl+Alt+O (Cmd+Alt+O on Mac)');
+  console.log('⌨️ Keyboard shortcut registered:', {
+    windows: shortcutBinding,
+    mac: macBinding
+  });
 }
 
 /**
@@ -509,6 +542,9 @@ async function main() {
     // 创建插件模型
     const model = createPluginModel();
     logseq.provideModel(model);
+
+    // 设置设置界面
+    setupSettingsSchema();
 
     // 创建工具栏按钮
     createToolbarButton();
@@ -530,8 +566,9 @@ async function main() {
     console.log(`📊 Current mode: ${previewModeActive ? 'Preview' : 'Edit'}`);
 
     // 显示欢迎消息
+    const currentShortcutBinding = logseq.settings?.shortcutBinding || currentShortcut;
     if (!logseq.settings?.welcomeMessageShown) {
-      logseq.App.showMsg('🎉 预览模式插件已加载！点击工具栏按钮或使用 Ctrl+Alt+O 切换模式');
+      logseq.App.showMsg(`🎉 预览模式插件已加载！点击工具栏按钮或使用 ${currentShortcutBinding.toUpperCase()} 切换模式`);
       logseq.updateSettings({ welcomeMessageShown: true });
     }
 
