@@ -138,11 +138,22 @@ function injectPreviewModeStyles() {
   logseq.provideStyle({
     key: `${pluginId}-preview-mode-styles`,
     style: `
-      /* 禁用块内容编辑 */
+      /* 禁用块内容编辑，但允许链接点击 */
       .block-content {
         pointer-events: none !important;
         user-select: text !important;
         cursor: default !important;
+      }
+
+      /* 重新启用双链链接的交互 */
+      .block-content a,
+      .block-content .page-ref,
+      .block-content .tag,
+      .block-content [data-ref],
+      .block-content .ui__link,
+      .block-content .bracket-link {
+        pointer-events: auto !important;
+        cursor: pointer !important;
       }
 
       /* 隐藏编辑光标和占位符 */
@@ -240,6 +251,9 @@ function attachEditModePreventionListeners() {
   document.addEventListener('dblclick', preventEditModeHandler, true);
   document.addEventListener('keydown', preventEditModeKeys, true);
 
+  // 添加专门的链接点击监听器（使用捕获阶段）
+  document.addEventListener('click', handleLinkNavigation, true);
+
   eventListenersAttached = true;
 }
 
@@ -255,11 +269,13 @@ function detachEditModePreventionListeners() {
   document.removeEventListener('click', preventEditModeHandler, true);
   document.removeEventListener('dblclick', preventEditModeHandler, true);
   document.removeEventListener('keydown', preventEditModeKeys, true);
+  document.removeEventListener('click', handleLinkNavigation, true);
 
   // 也移除冒泡阶段的监听器（防止残留）
   document.removeEventListener('click', preventEditModeHandler, false);
   document.removeEventListener('dblclick', preventEditModeHandler, false);
   document.removeEventListener('keydown', preventEditModeKeys, false);
+  document.removeEventListener('click', handleLinkNavigation, false);
 
   eventListenersAttached = false;
   console.log('✅ Event listeners detached');
@@ -281,13 +297,110 @@ function preventEditModeHandler(event) {
     const isTextSelection = window.getSelection().toString();
     const isInteractive = event.target.closest('button, input, textarea, select');
 
-    if (isToolbar || isLink || hasOnClick || isTextSelection || isInteractive) {
+    // 检查是否是双链链接（多种可能的Logseq链接实现）
+    const isPageRef = event.target.closest('.page-ref');
+    const isTag = event.target.closest('.tag');
+    const hasDataRef = event.target.closest('[data-ref]');
+    const isUILink = event.target.closest('.ui__link');
+    const isBracketLink = event.target.closest('.bracket-link');
+    const hasPageLinkAttr = event.target.closest('[data-link-type="page"]');
+    const hasHrefLink = event.target.closest('[href*="page"], [href*="block"]');
+
+    if (isToolbar || isLink || hasOnClick || isTextSelection || isInteractive ||
+        isPageRef || isTag || hasDataRef || isUILink || isBracketLink ||
+        hasPageLinkAttr || hasHrefLink) {
+      // 如果是链接类元素，处理导航
+      if (isPageRef || isTag || hasDataRef || isUILink || isBracketLink ||
+          hasPageLinkAttr || hasHrefLink) {
+        handleLinkClick(event);
+      }
       return; // 允许这些交互
     }
 
     event.preventDefault();
     event.stopPropagation();
     return false;
+  }
+}
+
+/**
+ * 处理链接导航（专门的监听器）
+ */
+function handleLinkNavigation(event) {
+  if (!previewModeActive) return;
+
+  // 检查点击的元素是否是链接
+  const targetElement = event.target.closest('a, .page-ref, .tag, [data-ref], .ui__link, .bracket-link, [data-link-type="page"], [href*="page"], [href*="block"]');
+
+  if (targetElement) {
+    // 延迟处理，让 preventEditModeHandler 先处理
+    setTimeout(() => {
+      if (!event.defaultPrevented) {
+        handleLinkClick(event);
+      }
+    }, 0);
+  }
+}
+
+/**
+ * 处理链接点击导航
+ */
+async function handleLinkClick(event) {
+  try {
+    const targetElement = event.target.closest('a, .page-ref, .tag, [data-ref], .ui__link, .bracket-link, [data-link-type="page"]');
+    if (!targetElement) return;
+
+    // 提取目标页面名称
+    let pageName = null;
+
+    // 尝试多种方式获取页面名称
+    if (targetElement.hasAttribute('data-ref')) {
+      pageName = targetElement.getAttribute('data-ref');
+    } else if (targetElement.hasAttribute('href')) {
+      const href = targetElement.getAttribute('href');
+      // 从href中提取页面名称 (可能是 #page 或 page)
+      pageName = href.replace(/^#/, '');
+    } else if (targetElement.textContent) {
+      // 从文本内容中提取页面名称 (去除 [[]] )
+      let textContent = targetElement.textContent;
+      // 处理嵌套的括号和空格
+      textContent = textContent.replace(/^\[\[|\]\]$/g, '').trim();
+      // 如果还有嵌套的括号，继续清理
+      textContent = textContent.replace(/^\[|\]$/g, '').trim();
+      pageName = textContent;
+    } else if (targetElement.getAttribute('title')) {
+      pageName = targetElement.getAttribute('title');
+    }
+
+    if (!pageName) {
+      console.warn('Could not extract page name from link element:', targetElement);
+      return;
+    }
+
+    // 清理页面名称，移除可能的特殊字符
+    pageName = pageName.replace(/^\s+|\s+$/g, '');
+
+    if (!pageName) {
+      console.warn('Empty page name after cleanup:', targetElement);
+      return;
+    }
+
+    console.log('🔗 Navigating to page:', pageName);
+
+    // 阻止默认行为
+    event.preventDefault();
+    event.stopPropagation();
+
+    // 使用 Logseq API 进行导航
+    await logseq.App.pushState('page', { name: pageName });
+
+    console.log('✅ Successfully navigated to:', pageName);
+
+  } catch (error) {
+    console.error('❌ Failed to navigate to link:', error);
+    // 如果导航失败，尝试使用默认行为
+    console.log('🔄 Falling back to default link behavior');
+    // 不阻止事件，让 Logseq 处理
   }
 }
 
