@@ -16,6 +16,7 @@ import "@logseq/libs"
 let previewModeActive = false;
 let eventListenersAttached = false;
 let currentShortcut = 'ctrl+alt+o';
+let initialShortcutRegistered = false;
 
 /**
  * 创建插件交互模型
@@ -585,7 +586,7 @@ function setupSettingsSchema() {
       key: 'shortcutBinding',
       type: 'string',
       title: '快捷键',
-      description: '设置切换预览模式的键盘快捷键 (例如: ctrl+alt+o, ctrl+shift+p)',
+      description: '设置切换预览模式的键盘快捷键 (例如: ctrl+alt+o, ctrl+shift+p)。注意：更改快捷键需要重新加载插件才能生效。',
       default: 'ctrl+alt+o',
     }
   ]);
@@ -595,8 +596,6 @@ function setupSettingsSchema() {
  * 设置设置模式监听
  */
 function setupSettingsListener() {
-  let settingsChangeTimeout = null;
-
   logseq.onSettingsChanged((newSettings) => {
     // 处理预览模式设置变化
     const newMode = newSettings?.previewMode || false;
@@ -608,37 +607,32 @@ function setupSettingsListener() {
       updateToolbarButton(newMode);
     }
 
-    // 处理快捷键设置变化
+    // 处理快捷键设置变化 - 只更新状态，不重新注册
     const newShortcut = newSettings?.shortcutBinding || 'ctrl+alt+o';
     if (newShortcut !== currentShortcut) {
-      console.log('⌨️ Shortcut changed, scheduling re-registration:', newShortcut);
+      console.log('⌨️ Shortcut setting changed to:', newShortcut);
       currentShortcut = newShortcut;
-
-      // 延迟处理快捷键变更，避免快速连续更改导致的冲突
-      if (settingsChangeTimeout) {
-        clearTimeout(settingsChangeTimeout);
-      }
-
-      settingsChangeTimeout = setTimeout(() => {
-        console.log('⌨️ Re-registering shortcut after delay:', newShortcut);
-        registerKeyboardShortcut();
-      }, 500); // 500ms 延迟
+      console.log('ℹ️ Note: Shortcut changes require plugin restart to take effect');
     }
   });
 }
 
 /**
- * 注册键盘快捷键
+ * 注册键盘快捷键（只在初始化时调用一次）
  */
 function registerKeyboardShortcut() {
+  // 避免重复注册
+  if (initialShortcutRegistered) {
+    console.log('⌨️ Shortcut already registered, skipping...');
+    return;
+  }
+
   // 从设置中获取用户自定义的快捷键
   const shortcutBinding = logseq.settings?.shortcutBinding || currentShortcut;
 
   // 为 Mac 自动转换 ctrl 为 cmd
   const macBinding = shortcutBinding.replace(/ctrl/g, 'cmd');
 
-  // 简单的快捷键注册，避免复杂的冲突检查
-  // Logseq 内部应该能处理重复注册的情况
   try {
     logseq.App.registerCommandShortcut(
       {
@@ -647,13 +641,16 @@ function registerKeyboardShortcut() {
         mode: 'global'
       },
       async () => {
-        console.log('⌨️ Preview mode shortcut triggered with:', shortcutBinding);
+        // 总是使用当前设置中的快捷键，而不是注册时的快捷键
+        const currentShortcutBinding = logseq.settings?.shortcutBinding || currentShortcut;
+        console.log('⌨️ Preview mode shortcut triggered with:', currentShortcutBinding);
         const model = createPluginModel();
         await model.togglePreviewMode();
       }
     );
 
-    console.log('⌨️ Keyboard shortcut registered:', {
+    initialShortcutRegistered = true;
+    console.log('⌨️ Keyboard shortcut registered once:', {
       windows: shortcutBinding,
       mac: macBinding
     });
