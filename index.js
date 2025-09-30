@@ -15,8 +15,6 @@ import "@logseq/libs"
 // 全局状态管理
 let previewModeActive = false;
 let eventListenersAttached = false;
-let currentShortcut = 'ctrl+alt+o';
-let commandRegistered = false;
 
 /**
  * 创建插件交互模型
@@ -558,7 +556,7 @@ function updateToolbarButton(isPreviewMode, retryCount = 0) {
 
     if (icon) icon.textContent = '🔒';
     if (text) text.textContent = '编辑';
-    button.title = '切换到编辑模式 (Ctrl+Shift+P)';
+    button.title = '切换到编辑模式';
   } else {
     // 移除所有状态类，添加编辑模式类
     button.classList.remove('preview-mode-active');
@@ -566,7 +564,7 @@ function updateToolbarButton(isPreviewMode, retryCount = 0) {
 
     if (icon) icon.textContent = '✏️';
     if (text) text.textContent = '预览';
-    button.title = '切换到预览模式 (Ctrl+Shift+P)';
+    button.title = '切换到预览模式';
   }
 
   console.log('✅ Toolbar button updated successfully:', {
@@ -577,20 +575,6 @@ function updateToolbarButton(isPreviewMode, retryCount = 0) {
   });
 }
 
-/**
- * 设置设置界面
- */
-function setupSettingsSchema() {
-  logseq.useSettingsSchema([
-    {
-      key: 'shortcutBinding',
-      type: 'string',
-      title: '快捷键',
-      description: '设置切换预览模式的键盘快捷键 (例如: ctrl+alt+o, ctrl+shift+p)。更改后立即生效，无需重启插件。',
-      default: 'ctrl+alt+o',
-    }
-  ]);
-}
 
 /**
  * 设置设置模式监听
@@ -606,73 +590,9 @@ function setupSettingsListener() {
       applyPreviewMode(newMode);
       updateToolbarButton(newMode);
     }
-
-    // 处理快捷键设置变化 - 动态更新快捷键
-    const newShortcut = newSettings?.shortcutBinding || 'ctrl+alt+o';
-    if (newShortcut !== currentShortcut) {
-      console.log('⌨️ Shortcut setting changed to:', newShortcut);
-      currentShortcut = newShortcut;
-
-      // 动态更新快捷键，无需重启插件
-      updateCommandShortcut();
-
-      console.log('✅ Shortcut updated dynamically, no restart needed');
-    }
   });
 }
 
-/**
- * 注册预览模式切换命令（支持动态快捷键更新）
- */
-function registerPreviewModeCommand() {
-  const shortcutBinding = logseq.settings?.shortcutBinding || currentShortcut;
-
-  // 为 Mac 自动转换 ctrl 为 cmd
-  const macBinding = shortcutBinding.replace(/ctrl/g, 'cmd');
-
-  try {
-    logseq.App.registerCommand(
-      'preview-mode-toggle',
-      {
-        key: 'preview-mode-toggle',
-        label: '切换预览模式',
-        desc: '在编辑模式和预览模式之间快速切换',
-        keybinding: {
-          binding: shortcutBinding,
-          mac: macBinding,
-          mode: 'global'
-        },
-        palette: true
-      },
-      async () => {
-        console.log('⌨️ Preview mode command triggered with:', shortcutBinding);
-        const model = createPluginModel();
-        await model.togglePreviewMode();
-      }
-    );
-
-    commandRegistered = true;
-    console.log('✅ Preview mode command registered:', {
-      shortcut: shortcutBinding,
-      mac: macBinding
-    });
-  } catch (error) {
-    console.error('❌ Failed to register command:', error);
-  }
-}
-
-/**
- * 更新命令快捷键（支持动态重新注册）
- */
-function updateCommandShortcut() {
-  const newShortcut = logseq.settings?.shortcutBinding || currentShortcut;
-
-  console.log('🔄 Updating command shortcut to:', newShortcut);
-
-  // 重新注册命令以应用新的快捷键
-  // Logseq 会自动处理命令的替换
-  registerPreviewModeCommand();
-}
 
 /**
  * 主函数
@@ -685,17 +605,11 @@ async function main() {
     const model = createPluginModel();
     logseq.provideModel(model);
 
-    // 设置设置界面
-    setupSettingsSchema();
-
     // 创建工具栏按钮
     createToolbarButton();
 
-    // 设置设置监听
+    // 设置设置监听（仅处理预览模式状态）
     setupSettingsListener();
-
-    // 注册预览模式命令（支持动态快捷键）
-    registerPreviewModeCommand();
 
     // 初始化状态
     previewModeActive = logseq.settings?.previewMode || false;
@@ -708,9 +622,8 @@ async function main() {
     console.log(`📊 Current mode: ${previewModeActive ? 'Preview' : 'Edit'}`);
 
     // 显示欢迎消息
-    const currentShortcutBinding = logseq.settings?.shortcutBinding || currentShortcut;
     if (!logseq.settings?.welcomeMessageShown) {
-      logseq.App.showMsg(`🎉 预览模式插件已加载！点击工具栏按钮或使用 ${currentShortcutBinding.toUpperCase()} 切换模式`);
+      logseq.App.showMsg('🎉 预览模式插件已加载！点击工具栏按钮切换模式');
       logseq.updateSettings({ welcomeMessageShown: true });
     }
 
