@@ -307,10 +307,9 @@ function createToolbarButton() {
         id="preview-mode-toggle"
         class="button"
         data-on-click="togglePreviewMode"
-        title="切换预览模式"
+        title="toggle preview mode"
       >
         <i class="ti">✏️</i>
-        <span class="button-text">预览</span>
       </a>
     `
   });
@@ -347,23 +346,20 @@ function updateToolbarButton(isPreviewMode, retryCount = 0) {
   if (!button) return;
 
   const icon = button.querySelector('i') || button.querySelector('.ti');
-  const text = button.querySelector('.button-text');
 
   if (isPreviewMode) {
     button.className = 'button preview-mode-active';
     button.classList.remove('edit-mode-active');
     button.classList.add('preview-mode-active');
 
-    if (icon) icon.textContent = '🔒';
-    if (text) text.textContent = '编辑';
-    button.title = '切换到编辑模式';
+    if (icon) icon.textContent = '👀'; 
+    button.title = 'toggle mode';
   } else {
     button.classList.remove('preview-mode-active');
     button.classList.add('edit-mode-active');
 
     if (icon) icon.textContent = '✏️';
-    if (text) text.textContent = '预览';
-    button.title = '切换到预览模式';
+    button.title = 'toggle mode';
   }
 }
 
