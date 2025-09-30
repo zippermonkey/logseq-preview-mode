@@ -595,6 +595,8 @@ function setupSettingsSchema() {
  * 设置设置模式监听
  */
 function setupSettingsListener() {
+  let settingsChangeTimeout = null;
+
   logseq.onSettingsChanged((newSettings) => {
     // 处理预览模式设置变化
     const newMode = newSettings?.previewMode || false;
@@ -609,9 +611,18 @@ function setupSettingsListener() {
     // 处理快捷键设置变化
     const newShortcut = newSettings?.shortcutBinding || 'ctrl+alt+o';
     if (newShortcut !== currentShortcut) {
-      console.log('⌨️ Shortcut changed, re-registering:', newShortcut);
+      console.log('⌨️ Shortcut changed, scheduling re-registration:', newShortcut);
       currentShortcut = newShortcut;
-      registerKeyboardShortcut();
+
+      // 延迟处理快捷键变更，避免快速连续更改导致的冲突
+      if (settingsChangeTimeout) {
+        clearTimeout(settingsChangeTimeout);
+      }
+
+      settingsChangeTimeout = setTimeout(() => {
+        console.log('⌨️ Re-registering shortcut after delay:', newShortcut);
+        registerKeyboardShortcut();
+      }, 500); // 500ms 延迟
     }
   });
 }
@@ -626,23 +637,33 @@ function registerKeyboardShortcut() {
   // 为 Mac 自动转换 ctrl 为 cmd
   const macBinding = shortcutBinding.replace(/ctrl/g, 'cmd');
 
-  logseq.App.registerCommandShortcut(
-    {
-      binding: shortcutBinding,
-      mac: macBinding,
-      mode: 'global'
-    },
-    async () => {
-      console.log('⌨️ Preview mode shortcut triggered with:', shortcutBinding);
-      const model = createPluginModel();
-      await model.togglePreviewMode();
-    }
-  );
+  // 简单的快捷键注册，避免复杂的冲突检查
+  // Logseq 内部应该能处理重复注册的情况
+  try {
+    logseq.App.registerCommandShortcut(
+      {
+        binding: shortcutBinding,
+        mac: macBinding,
+        mode: 'global'
+      },
+      async () => {
+        console.log('⌨️ Preview mode shortcut triggered with:', shortcutBinding);
+        const model = createPluginModel();
+        await model.togglePreviewMode();
+      }
+    );
 
-  console.log('⌨️ Keyboard shortcut registered:', {
-    windows: shortcutBinding,
-    mac: macBinding
-  });
+    console.log('⌨️ Keyboard shortcut registered:', {
+      windows: shortcutBinding,
+      mac: macBinding
+    });
+  } catch (error) {
+    if (error.message && error.message.includes('conflicts with existing shortcut')) {
+      console.log('⚠️ Shortcut conflict detected, this is normal:', error.message);
+    } else {
+      console.error('❌ Failed to register shortcut:', error);
+    }
+  }
 }
 
 /**
