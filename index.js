@@ -11,7 +11,7 @@
  * - 工具栏按钮提供快速切换
  * - 状态持久化记住用户选择
  */
-
+import "@logseq/libs"
 // 全局状态管理
 let previewModeActive = false;
 let eventListenersAttached = false;
