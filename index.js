@@ -16,7 +16,7 @@ import "@logseq/libs"
 let previewModeActive = false;
 let eventListenersAttached = false;
 let currentShortcut = 'ctrl+alt+o';
-let initialShortcutRegistered = false;
+let commandRegistered = false;
 
 /**
  * 创建插件交互模型
@@ -586,7 +586,7 @@ function setupSettingsSchema() {
       key: 'shortcutBinding',
       type: 'string',
       title: '快捷键',
-      description: '设置切换预览模式的键盘快捷键 (例如: ctrl+alt+o, ctrl+shift+p)。注意：更改快捷键需要重新加载插件才能生效。',
+      description: '设置切换预览模式的键盘快捷键 (例如: ctrl+alt+o, ctrl+shift+p)。更改后立即生效，无需重启插件。',
       default: 'ctrl+alt+o',
     }
   ]);
@@ -607,60 +607,71 @@ function setupSettingsListener() {
       updateToolbarButton(newMode);
     }
 
-    // 处理快捷键设置变化 - 只更新状态，不重新注册
+    // 处理快捷键设置变化 - 动态更新快捷键
     const newShortcut = newSettings?.shortcutBinding || 'ctrl+alt+o';
     if (newShortcut !== currentShortcut) {
       console.log('⌨️ Shortcut setting changed to:', newShortcut);
       currentShortcut = newShortcut;
-      console.log('ℹ️ Note: Shortcut changes require plugin restart to take effect');
+
+      // 动态更新快捷键，无需重启插件
+      updateCommandShortcut();
+
+      console.log('✅ Shortcut updated dynamically, no restart needed');
     }
   });
 }
 
 /**
- * 注册键盘快捷键（只在初始化时调用一次）
+ * 注册预览模式切换命令（支持动态快捷键更新）
  */
-function registerKeyboardShortcut() {
-  // 避免重复注册
-  if (initialShortcutRegistered) {
-    console.log('⌨️ Shortcut already registered, skipping...');
-    return;
-  }
-
-  // 从设置中获取用户自定义的快捷键
+function registerPreviewModeCommand() {
   const shortcutBinding = logseq.settings?.shortcutBinding || currentShortcut;
 
   // 为 Mac 自动转换 ctrl 为 cmd
   const macBinding = shortcutBinding.replace(/ctrl/g, 'cmd');
 
   try {
-    logseq.App.registerCommandShortcut(
+    logseq.App.registerCommand(
+      'preview-mode-toggle',
       {
-        binding: shortcutBinding,
-        mac: macBinding,
-        mode: 'global'
+        key: 'preview-mode-toggle',
+        label: '切换预览模式',
+        desc: '在编辑模式和预览模式之间快速切换',
+        keybinding: {
+          binding: shortcutBinding,
+          mac: macBinding,
+          mode: 'global'
+        },
+        palette: true
       },
       async () => {
-        // 总是使用当前设置中的快捷键，而不是注册时的快捷键
-        const currentShortcutBinding = logseq.settings?.shortcutBinding || currentShortcut;
-        console.log('⌨️ Preview mode shortcut triggered with:', currentShortcutBinding);
+        console.log('⌨️ Preview mode command triggered with:', shortcutBinding);
         const model = createPluginModel();
         await model.togglePreviewMode();
       }
     );
 
-    initialShortcutRegistered = true;
-    console.log('⌨️ Keyboard shortcut registered once:', {
-      windows: shortcutBinding,
+    commandRegistered = true;
+    console.log('✅ Preview mode command registered:', {
+      shortcut: shortcutBinding,
       mac: macBinding
     });
   } catch (error) {
-    if (error.message && error.message.includes('conflicts with existing shortcut')) {
-      console.log('⚠️ Shortcut conflict detected, this is normal:', error.message);
-    } else {
-      console.error('❌ Failed to register shortcut:', error);
-    }
+    console.error('❌ Failed to register command:', error);
   }
+}
+
+/**
+ * 更新命令快捷键（支持动态重新注册）
+ */
+function updateCommandShortcut() {
+  const newShortcut = logseq.settings?.shortcutBinding || currentShortcut;
+
+  console.log('🔄 Updating command shortcut to:', newShortcut);
+
+  // 重新注册命令以应用新的快捷键
+  // Logseq 会自动处理命令的替换
+  registerPreviewModeCommand();
 }
 
 /**
@@ -683,8 +694,8 @@ async function main() {
     // 设置设置监听
     setupSettingsListener();
 
-    // 注册键盘快捷键
-    registerKeyboardShortcut();
+    // 注册预览模式命令（支持动态快捷键）
+    registerPreviewModeCommand();
 
     // 初始化状态
     previewModeActive = logseq.settings?.previewMode || false;
