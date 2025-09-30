@@ -382,24 +382,80 @@ function createToolbarButton() {
 /**
  * 更新工具栏按钮状态
  */
-function updateToolbarButton(isPreviewMode) {
-  const button = document.querySelector('#preview-mode-toggle');
-  if (!button) return;
+function updateToolbarButton(isPreviewMode, retryCount = 0) {
+  console.log('🔧 Updating toolbar button:', { isPreviewMode, retryCount });
 
-  const icon = button.querySelector('i');
+  // 方法1: 使用 data-injected-ui 属性查找按钮容器
+  const pluginId = logseq.baseInfo.id;
+  let buttonContainer = top.document.querySelector(`div[data-injected-ui="preview-mode-toggle-${pluginId}"]`);
+
+  // 如果方法1失败，尝试方法2: 直接查找按钮ID
+  if (!buttonContainer) {
+    buttonContainer = top.document.querySelector('#preview-mode-toggle');
+  }
+
+  // 如果方法2失败，尝试方法3: 在当前文档中查找
+  if (!buttonContainer) {
+    buttonContainer = document.querySelector('#preview-mode-toggle');
+  }
+
+  // 如果还是找不到，使用Logseq API
+  if (!buttonContainer) {
+    logseq.App.queryElementById('preview-mode-toggle').then(result => {
+      if (result && result !== true) {
+        // 找到了元素，但返回的是HTML内容，我们需要重新查找
+        setTimeout(() => updateToolbarButton(isPreviewMode, retryCount + 1), 100);
+      } else if (retryCount < 5) {
+        // 重试机制
+        console.log(`⚠️ Button not found, retrying... (${retryCount + 1}/5)`);
+        setTimeout(() => updateToolbarButton(isPreviewMode, retryCount + 1), 200);
+      } else {
+        console.error('❌ Failed to find toolbar button after 5 attempts');
+      }
+    });
+    return;
+  }
+
+  // 获取按钮元素（可能是容器本身或容器内的a标签）
+  let button = buttonContainer;
+  if (buttonContainer.tagName !== 'A') {
+    button = buttonContainer.querySelector('a') || buttonContainer.querySelector('#preview-mode-toggle') || buttonContainer;
+  }
+
+  if (!button) {
+    console.error('❌ Button element not found in container');
+    return;
+  }
+
+  console.log('✅ Found button element:', button);
+
+  const icon = button.querySelector('i') || button.querySelector('.ti');
   const text = button.querySelector('.button-text');
 
   if (isPreviewMode) {
-    button.className = 'button preview-mode-active';
-    icon.textContent = '🔒';
-    text.textContent = '编辑';
+    // 移除所有状态类，添加预览模式类
+    button.classList.remove('edit-mode-active');
+    button.classList.add('preview-mode-active');
+
+    if (icon) icon.textContent = '🔒';
+    if (text) text.textContent = '编辑';
     button.title = '切换到编辑模式 (Ctrl+Shift+P)';
   } else {
-    button.className = 'button edit-mode-active';
-    icon.textContent = '✏️';
-    text.textContent = '预览';
+    // 移除所有状态类，添加编辑模式类
+    button.classList.remove('preview-mode-active');
+    button.classList.add('edit-mode-active');
+
+    if (icon) icon.textContent = '✏️';
+    if (text) text.textContent = '预览';
     button.title = '切换到预览模式 (Ctrl+Shift+P)';
   }
+
+  console.log('✅ Toolbar button updated successfully:', {
+    isPreviewMode,
+    hasIcon: !!icon,
+    hasText: !!text,
+    buttonClasses: button.className
+  });
 }
 
 /**
