@@ -1,25 +1,38 @@
 # Logseq Preview Mode Plugin
 
-一个为 Logseq 开发的预览模式切换插件，允许用户在编辑模式和预览模式之间快速切换。
+A Logseq plugin for toggling preview mode, allowing users to quickly switch between edit and preview modes. / 一个为 Logseq 开发的预览模式切换插件，允许用户在编辑模式和预览模式之间快速切换。
 
-## 功能特性
+## Features / 功能特性
 
-### 🎯 核心功能
+### 🎯 Core Features / 核心功能
+- **Edit Mode**: Display Logseq blocks in normal markdown source mode (default Logseq behavior)
+- **Preview Mode**: Blocks remain in rendered markdown state even when focused, preventing editing
+- **Link Navigation**: Support clicking `[[page]]` double-bracket links for page navigation in preview mode
+- **Quick Toggle**: One-click mode switching via toolbar button
+- **State Memory**: Automatically remember user's mode choice, persisting across restarts
+
+中文说明：
 - **编辑模式**: 正常显示 Logseq 块的 markdown 源码（默认 Logseq 行为）
 - **预览模式**: 即使光标聚焦在块上，也无法编辑，始终保持 markdown 渲染状态
 - **链接导航**: 预览模式下支持点击 `[[页面]]` 双链链接进行页面跳转
 - **快速切换**: 工具栏按钮一键切换模式
 - **状态记忆**: 自动记住用户的模式选择，重启后保持设置
 
-### 🎨 用户体验
+### 🎨 User Experience / 用户体验
+- **Intuitive Toolbar Button**: Shows current mode status (✏️ Edit / 👀 Preview)
+- **Text Selection**: Maintains text selectability in preview mode
+- **Smart Protection**: Prevents accidental editing while allowing normal interactions
+- **Distraction-free**: Focus on content browsing and navigation
+
+中文说明：
 - 直观的工具栏按钮，显示当前模式状态（✏️ 编辑 / 👀 预览）
 - 预览模式下保持文本可选择性和链接可点击性
 - 智能防护：防止误触进入编辑模式，同时允许正常交互
 - 无干扰体验：专注于内容浏览和导航
 
-## 技术实现
+## Technical Implementation / 技术实现
 
-### 🏗️ 架构设计
+### 🏗️ Architecture / 架构设计
 - **极简实现**: 纯 JavaScript 开发，无外部依赖
 - **CSS 控制**: 通过动态样式注入精准控制编辑行为
 - **智能事件处理**: 智能阻止编辑相关事件，保持链接导航等正常功能

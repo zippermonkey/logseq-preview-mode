@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Preview mode toggle plugin for Logseq - 快速切换编辑模式和预览模式",
   "main": "dist/index.html",
-  "author": "©Logseq Plugin Developer",
+  "author": "zippermonkey",
   "scripts": {
     "dev": "parcel index.html --port 1235",
     "build": "parcel build --public-url ./ --no-source-maps index.html --no-minify"
@@ -14,7 +14,9 @@
   },
   "logseq": {
     "id": "_preview_mode_plugin",
-    "icon": "./icon.png"
+    "icon": "./icon.png",
+    "title": "Preview Mode Toggle",
+    "description": "Toggle preview mode for blocks and pages in Logseq, allowing distraction-free reading experience"
   },
   "license": "MIT",
   "browserslist": [
