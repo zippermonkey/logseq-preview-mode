@@ -4,6 +4,10 @@ A Logseq plugin for toggling preview mode, allowing users to quickly switch betw
 
 ## Features / 功能特性
 
+## DEMO
+
+![DEMO](./demo.gif)
+
 ### 🎯 Core Features / 核心功能
 - **Edit Mode**: Display Logseq blocks in normal markdown source mode (default Logseq behavior)
 - **Preview Mode**: Blocks remain in rendered markdown state even when focused, preventing editing
